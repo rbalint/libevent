@@ -2014,6 +2014,14 @@ evhttp_read_header(struct evhttp_connection *evcon,
 	/* Disable reading for now */
 	bufferevent_disable(evcon->bufev, EV_READ);
 
+	/* Callback can shut down connection with negative return value */
+	if (req->header_cb != NULL) {
+		if ((*req->header_cb)(req, req->cb_arg) < 0) {
+			evhttp_connection_fail(evcon, EVCON_HTTP_EOF);
+			return;
+		}
+	}
+
 	/* Done reading headers, do the real work */
 	switch (req->kind) {
 	case EVHTTP_REQUEST:
@@ -3574,6 +3582,13 @@ evhttp_request_set_chunked_cb(struct evhttp_request *req,
     void (*cb)(struct evhttp_request *, void *))
 {
 	req->chunk_cb = cb;
+}
+
+void
+evhttp_request_set_header_cb(struct evhttp_request *req,
+    int (*cb)(struct evhttp_request *, void *))
+{
+	req->header_cb = cb;
 }
 
 /*
